@@ -12,8 +12,6 @@ defmodule BotArmyAuditorRepoScanner.MixProject do
         auditor_repo_scanner_bot: [
           applications: [bot_army_auditor_repo_scanner: :permanent]
         ]
-          applications: [bot_army_auditor_repo_scanner: :permanent]
-        ]
       ]
     ]
   end
