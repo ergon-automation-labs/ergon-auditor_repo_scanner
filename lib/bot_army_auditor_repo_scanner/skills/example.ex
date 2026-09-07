@@ -65,20 +65,14 @@ defmodule BotArmyAuditorRepoScanner.Skills.Example do
   - `ctx.personality` — Bot personality for LLM tone
   - `ctx.context` — Current context/state (if available)
   """
-
-  use BotArmy.Skill
-
   require Logger
 
-  @impl true
   def name, do: :example
 
-  @impl true
   def description do
     "Example skill - processes content and returns analysis"
   end
 
-  @impl true
   def nats_triggers do
     # NATS subjects that trigger this skill
     # Pattern: bot.<app_name>.command.<action>
@@ -87,14 +81,12 @@ defmodule BotArmyAuditorRepoScanner.Skills.Example do
     ]
   end
 
-  @impl true
   def llm_hint do
     # :fast — simple/quick reasoning
     # :deep — complex reasoning, multi-turn, chains
     :fast
   end
 
-  @impl true
   def validate(%{"content" => content}) when is_binary(content) and byte_size(content) > 0 do
     :ok
   end
@@ -103,7 +95,6 @@ defmodule BotArmyAuditorRepoScanner.Skills.Example do
     {:error, "content field required and must be non-empty string"}
   end
 
-  @impl true
   def execute(%{"content" => content}, ctx) do
     try do
       Logger.info("[Example] Executing with content length: #{byte_size(content)}")
