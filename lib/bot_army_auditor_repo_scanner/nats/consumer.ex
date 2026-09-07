@@ -15,6 +15,9 @@ defmodule BotArmyAuditorRepoScanner.NATS.Consumer do
 
   @reconnect_delay_ms 5000
   @version Mix.Project.config()[:version]
+  # Re-register every 20s: renews the Registry entry (40s stale sweep) and
+  # re-broadcasts presence so peers that booted before us still see us.
+  @registry_heartbeat_ms 20_000
 
   # Register subjects with their metadata for runtime discovery
   @subjects [
@@ -67,6 +70,8 @@ defmodule BotArmyAuditorRepoScanner.NATS.Consumer do
         # Register subjects for runtime discovery
         BotArmyRuntime.Registry.register("auditor_repo_scanner", @subjects, @version)
 
+        Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
+
         {:noreply, %{state | subscriptions: subscriptions, conn: conn}}
 
       {:error, _reason} ->
@@ -79,6 +84,19 @@ defmodule BotArmyAuditorRepoScanner.NATS.Consumer do
   @impl true
   def handle_info(:connect_retry, state) do
     {:noreply, state, {:continue, :connect}}
+  end
+  @impl true
+  def handle_info(:registry_heartbeat, state) do
+    # Re-register: renews the local entry past the Registry's 40s stale sweep
+    # and re-broadcasts presence to peers (the single boot-time broadcast is
+    # missed by registries that subscribe after it — the simultaneous-boot
+    # race that left the whole fleet invisible to service discovery).
+    if state.conn do
+      BotArmyRuntime.Registry.register("auditor_repo_scanner", @subjects, @version)
+      Process.send_after(self(), :registry_heartbeat, @registry_heartbeat_ms)
+    end
+
+    {:noreply, state}
   end
 
   @impl true
