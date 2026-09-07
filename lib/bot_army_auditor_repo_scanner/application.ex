@@ -23,6 +23,7 @@ defmodule BotArmyAuditorRepoScanner.Application do
       []
       |> maybe_add_repo()
       |> maybe_add_pulse_publisher()
+      |> maybe_add_consumer()
       |> maybe_add_workers()
 
     opts = [strategy: :one_for_one, name: BotArmyAuditorRepoScanner.Supervisor]
@@ -42,6 +43,10 @@ defmodule BotArmyAuditorRepoScanner.Application do
     else
       [{BotArmyAuditorRepoScanner.PulsePublisher, []} | children]
     end
+  end
+
+  defp maybe_add_consumer(children) do
+    if @env == :test, do: children, else: [{BotArmyAuditorRepoScanner.NATS.Consumer, []} | children]
   end
 
   defp maybe_add_workers(children) do
