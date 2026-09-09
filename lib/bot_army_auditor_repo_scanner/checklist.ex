@@ -604,7 +604,13 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
     lib_dir = Path.join(repo_path, "lib")
 
     if File.dir?(lib_dir) do
+      # lib/mix/tasks is the standard home for CLI-only Mix tasks: they run
+      # under `mix` on the host and are never part of the release runtime,
+      # so Mix.* calls there honor the compile-time-only contract.
       Path.wildcard(Path.join(lib_dir, "**/*.ex"))
+      |> Enum.reject(fn path ->
+        String.contains?(path, "mix/tasks")
+      end)
     else
       []
     end
