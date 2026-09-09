@@ -315,10 +315,20 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
       end
 
     pre_push = Path.join([repo_path, hooks_path || "git-hooks", "pre-push"])
+    ships_hooks = File.regular?(Path.join(repo_path, "git-hooks/pre-push"))
 
     cond do
+      # The repo's responsibility is SHIPPING the hooks; wiring core.hooksPath
+      # is clone-local operator state (a fresh clone never has it set, so
+      # demanding it here would warn forever on every clean checkout).
+      is_nil(hooks_path) and ships_hooks ->
+        pass(
+          "git_hooks",
+          "repo ships git-hooks/pre-push (run `make setup-hooks` after cloning to wire core.hooksPath)"
+        )
+
       is_nil(hooks_path) ->
-        warn("git_hooks", "core.hooksPath not set — run `make setup-hooks` to wire pre-push validation")
+        warn("git_hooks", "repo ships no git hooks — add git-hooks/pre-push + a `make setup-hooks` target")
 
       File.regular?(pre_push) ->
         pass("git_hooks", "hooks wired: core.hooksPath=#{hooks_path}, pre-push present")

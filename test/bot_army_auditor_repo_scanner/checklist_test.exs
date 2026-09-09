@@ -244,18 +244,29 @@ import Config
     assert results["verdict"] == "degraded"
   end
 
-  test "hooks wired passes; unwired warns", %{root: root} do
+  test "hooks wired passes; shipped-but-unwired passes with remedy; absent warns", %{root: root} do
     repo = build_full_bot(root)
     File.mkdir_p!(Path.join(repo, "git-hooks"))
     File.write!(Path.join(repo, "git-hooks/pre-push"), "#!/bin/bash\n")
     {_, 0} = System.cmd("git", ["-C", repo, "config", "core.hooksPath", "git-hooks"])
 
-    {:ok, results} = Checklist.run(repo, root: root)
-    assert check(results, "git_hooks")["status"] == "pass"
+    {:ok, wired} = Checklist.run(repo, root: root)
+    assert check(wired, "git_hooks")["status"] == "pass"
+    assert check(wired, "git_hooks")["detail"] =~ "hooks wired"
 
+    # Fresh-clone state: hooks shipped but core.hooksPath never set. The
+    # repo's job is shipping the hooks; wiring is operator state, so this
+    # passes with the remedy in the detail instead of warning forever.
+    {_, 0} = System.cmd("git", ["-C", repo, "config", "--unset", "core.hooksPath"])
+    {:ok, unwired} = Checklist.run(repo, root: root)
+    assert check(unwired, "git_hooks")["status"] == "pass"
+    assert check(unwired, "git_hooks")["detail"] =~ "setup-hooks"
+
+    # No hooks at all → the repo standard itself is unmet.
     File.rm_rf!(Path.join(repo, "git-hooks"))
-    {:ok, results2} = Checklist.run(repo, root: root)
-    assert check(results2, "git_hooks")["status"] == "warn"
+    {:ok, absent} = Checklist.run(repo, root: root)
+    assert check(absent, "git_hooks")["status"] == "warn"
+    assert check(absent, "git_hooks")["detail"] =~ "ships no git hooks"
   end
 
   test "template-only tests warn", %{root: root} do
