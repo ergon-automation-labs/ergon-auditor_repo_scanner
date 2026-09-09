@@ -172,6 +172,7 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
     import_lines =
       for {line, idx} <- lines,
           String.contains?(line, "import_config"),
+          per_env_import?(line),
           do: {line, idx}
 
     cond do
@@ -179,6 +180,15 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
       Enum.all?(import_lines, fn {line, i} -> guarded_import?(i, lines) end) -> :guarded
       true -> :unconditional
     end
+  end
+
+  # Only per-env imports concern this check. A static
+  # `import_config "runtime.exs"` (or "test.exs") is unconditional by design
+  # and says nothing about config/prod.exs.
+  defp per_env_import?(line) do
+    String.contains?(line, "Mix.env()") or
+      String.contains?(line, "config_env()") or
+      String.contains?(line, "env_config")
   end
 
   # An import_config is "guarded" when File.exists?/File.regular? appears

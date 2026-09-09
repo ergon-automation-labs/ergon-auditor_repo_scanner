@@ -71,7 +71,7 @@ defmodule BotArmyAuditorRepoScanner.ChecklistTest do
     File.mkdir_p!(Path.join(repo, "config"))
     # Unconditional per-env import: the one shape that makes prod.exs a
     # hard requirement, so the required-fail below is honest.
-    File.write!(Path.join(repo, "config/config.exs"), "import Config\n\nimport_config \"#{Mix.env()}.exs\"\n")
+    File.write!(Path.join(repo, "config/config.exs"), "import Config\n\nimport_config \"\#{Mix.env()}.exs\"\n")
     File.write!(Path.join(repo, "mix.exs"), "defmodule M do\n  use Mix.Project\n  def project, do: [app: :m, version: \"0.1.0\"]\nend\n")
     repo
   end
