@@ -251,7 +251,7 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
 
     cond do
       is_nil(hooks_path) ->
-        warn("git_hooks", "core.hooksPath not set — pushes bypass validation")
+        warn("git_hooks", "core.hooksPath not set — run `make setup-hooks` to wire pre-push validation")
 
       File.regular?(pre_push) ->
         pass("git_hooks", "hooks wired: core.hooksPath=#{hooks_path}, pre-push present")
