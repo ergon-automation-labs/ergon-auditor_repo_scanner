@@ -131,12 +131,69 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
 
   # ── Required checks ─────────────────────────────────────────────────────
 
+  # config/prod.exs is only a HARD requirement when config.exs imports a
+  # per-env file unconditionally — `import_config "#{Mix.env()}.exs"` with no
+  # File.exists?/File.regular? guard. The fleet standard is the guarded form
+  # (prod/dev overrides are optional), so an unconditional import is the only
+  # honest required-fail here.
   defp prod_exs_check(repo_path) do
     if File.regular?(Path.join(repo_path, "config/prod.exs")) do
       pass("prod_exs", "config/prod.exs present")
     else
-      fail("prod_exs", "config/prod.exs missing — MIX_ENV=prod release builds fail without it")
+      config = Path.join(repo_path, "config/config.exs")
+
+      cond do
+        not File.regular?(config) ->
+          pass("prod_exs", "no config.exs — nothing imports per-env config, prod builds don't need config/prod.exs")
+
+        true ->
+          case per_env_import_kind(config) do
+            :unconditional ->
+              fail("prod_exs", "config.exs imports per-env config unconditionally — MIX_ENV=prod release builds fail without config/prod.exs")
+
+            :guarded ->
+              pass("prod_exs", "no config/prod.exs — per-env import is File.exists?-guarded, prod builds don't read it")
+
+            :none ->
+              pass("prod_exs", "no config/prod.exs — config.exs has no per-env import, prod builds don't read it")
+          end
+      end
     end
+  end
+
+  defp per_env_import_kind(config_path) do
+    lines =
+      config_path
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.reject(fn line -> String.trim_leading(line) =~ ~r/^#/ end)
+      |> Enum.with_index(1)
+
+    import_lines =
+      for {line, idx} <- lines,
+          String.contains?(line, "import_config"),
+          do: {line, idx}
+
+    cond do
+      import_lines == [] -> :none
+      Enum.all?(import_lines, fn {line, i} -> guarded_import?(i, lines) end) -> :guarded
+      true -> :unconditional
+    end
+  end
+
+  # An import_config is "guarded" when File.exists?/File.regular? appears
+  # within the 8 preceding meaningful lines (covers both the inline
+  # `if File.exists?("config/...exs")` form and the two-step
+  # `env_config = ...; if File.exists?(...)` form).
+  defp guarded_import?(line_index, lines) do
+    window_start = max(line_index - 8, 1)
+
+    for {line, i} <- lines, i >= window_start and i < line_index do
+      line
+    end
+    |> Enum.any?(fn line ->
+      String.contains?(line, "File.exists?") or String.contains?(line, "File.regular?")
+    end)
   end
 
   defp mix_lock_check(repo_path) do

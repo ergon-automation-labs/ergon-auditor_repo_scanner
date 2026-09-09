@@ -68,6 +68,10 @@ defmodule BotArmyAuditorRepoScanner.ChecklistTest do
   defp build_broken_bot(root, name \\ "bot_army_broken") do
     repo = Path.join(root, name)
     File.mkdir_p!(repo)
+    File.mkdir_p!(Path.join(repo, "config"))
+    # Unconditional per-env import: the one shape that makes prod.exs a
+    # hard requirement, so the required-fail below is honest.
+    File.write!(Path.join(repo, "config/config.exs"), "import Config\n\nimport_config \"#{Mix.env()}.exs\"\n")
     File.write!(Path.join(repo, "mix.exs"), "defmodule M do\n  use Mix.Project\n  def project, do: [app: :m, version: \"0.1.0\"]\nend\n")
     repo
   end
@@ -124,6 +128,68 @@ defmodule BotArmyAuditorRepoScanner.ChecklistTest do
     assert check(results, "makefile")["status"] == "fail"
     assert check(results, "mix_lock")["status"] == "fail"
     assert results["summary"]["fail"] >= 3
+  end
+
+  # -- prod_exs honesty: prod.exs is only required for unconditional imports --
+
+  test "guarded per-env import without prod.exs passes", %{root: root} do
+    repo = Path.join(root, "bot_army_guarded")
+    File.mkdir_p!(Path.join(repo, "config"))
+    File.write!(Path.join(repo, "config/config.exs"), """
+import Config
+
+env_config = "\#{config_env()}.exs"
+
+if File.exists?(Path.join(__DIR__, env_config)) do
+  import_config env_config
+end
+""")
+    {:ok, results} = Checklist.run(repo, root: root)
+
+    c = check(results, "prod_exs")
+    assert c["status"] == "pass"
+    assert c["detail"] =~ "guarded"
+  end
+
+  test "File.exists?-guarded Mix.env import without prod.exs passes", %{root: root} do
+    repo = Path.join(root, "bot_army_guarded2")
+    File.mkdir_p!(Path.join(repo, "config"))
+    File.write!(Path.join(repo, "config/config.exs"), """
+import Config
+
+if File.exists?("config/\#{Mix.env()}.exs") do
+  import_config "\#{Mix.env()}.exs"
+end
+""")
+    {:ok, results} = Checklist.run(repo, root: root)
+
+    assert check(results, "prod_exs")["status"] == "pass"
+  end
+
+  test "commented-out per-env import without prod.exs passes", %{root: root} do
+    repo = Path.join(root, "bot_army_commented")
+    File.mkdir_p!(Path.join(repo, "config"))
+    File.write!(Path.join(repo, "config/config.exs"), """
+import Config
+
+# import_config "\#{config_env()}.exs", which would raise for :dev.
+""")
+    {:ok, results} = Checklist.run(repo, root: root)
+
+    assert check(results, "prod_exs")["status"] == "pass"
+    assert check(results, "prod_exs")["detail"] =~ "no per-env import"
+  end
+
+  test "no config.exs at all passes prod_exs", %{root: root} do
+    repo = build_broken_bot(root, "bot_army_noconfig")
+
+    # Remove the fixture's config.exs so the repo has no config dir at all
+    File.rm!(Path.join(repo, "config/config.exs"))
+    File.rmdir!(Path.join(repo, "config"))
+    {:ok, results} = Checklist.run(repo, root: root)
+
+    assert check(results, "prod_exs")["status"] == "pass"
+    assert check(results, "prod_exs")["detail"] =~ "nothing imports"
   end
 
   test "missing release block fails", %{root: root} do
