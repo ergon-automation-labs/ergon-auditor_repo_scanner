@@ -1,5 +1,5 @@
 {application,bot_army_auditor_repo_scanner,
-             [{config_mtime,1788960084},
+             [{config_mtime,1788960142},
               {optional_applications,[]},
               {applications,[kernel,stdlib,elixir,logger,
                              bot_army_library_core,bot_army_library_runtime,
@@ -16,5 +16,5 @@
                         'Elixir.BotArmyAuditorRepoScanner.Receipts',
                         'Elixir.BotArmyAuditorRepoScanner.Skills.Example']},
               {registered,[]},
-              {vsn,"0.1.1"},
+              {vsn,"0.2.0"},
               {mod,{'Elixir.BotArmyAuditorRepoScanner.Application',[]}}]}.

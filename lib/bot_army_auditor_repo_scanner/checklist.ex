@@ -563,7 +563,10 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
   # git is invoked with read-only subcommands only (config --get semantics,
   # ls-files, status --porcelain, remote get-url). Safe on RO mounts.
   defp git(repo_path, args) do
-    case System.cmd("git", ["-C", repo_path | args],
+    # --no-optional-locks: stage mounts repos/ read-only — plain `git status`
+    # tries to refresh the index (needs .git/index.lock) and fails on a RO
+    # mount. The flag keeps every invocation read-only by design.
+    case System.cmd("git", ["--no-optional-locks", "-C", repo_path | args],
            stderr_to_stdout: true,
            env: [{"GIT_TERMINAL_PROMPT", "0"}]
          ) do

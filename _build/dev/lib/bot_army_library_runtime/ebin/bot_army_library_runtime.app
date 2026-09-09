@@ -1,5 +1,5 @@
 {application,bot_army_library_runtime,
-    [{config_mtime,1788764071},
+    [{config_mtime,1788960084},
      {compile_env,[{bot_army_library_runtime,[auto_start_services],error}]},
      {optional_applications,[]},
      {applications,
@@ -67,6 +67,7 @@
           'Elixir.BotArmyLibraryRuntime.Pulse',
           'Elixir.BotArmyLibraryRuntime.RPG.BotCharacter',
           'Elixir.BotArmyLibraryRuntime.Registry',
+          'Elixir.BotArmyLibraryRuntime.Reminders',
           'Elixir.BotArmyLibraryRuntime.Soul',
           'Elixir.BotArmyLibraryRuntime.SubjectMetrics',
           'Elixir.BotArmyLibraryRuntime.SynapseHealth',
@@ -75,5 +76,5 @@
           'Elixir.BotArmyLibraryRuntime.ThemeRenderer',
           'Elixir.BotArmyLibraryRuntime.Tracing']},
      {registered,[]},
-     {vsn,"0.14.74"},
+     {vsn,"0.14.78"},
      {mod,{'Elixir.BotArmyLibraryRuntime.Application',[]}}]}.
