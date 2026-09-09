@@ -75,7 +75,7 @@ defmodule BotArmyAuditorRepoScanner.PulsePublisher do
       metrics: %{}
     }
 
-    case BotArmyRuntime.NATS.Publisher.publish("bot.#{@service_name}.pulse", pulse) do
+    case BotArmyLibraryRuntime.NATS.Publisher.publish("bot.#{@service_name}.pulse", pulse) do
       {:ok, _} ->
         Logger.debug("[PulsePublisher] Published pulse: #{signal}")
 
@@ -85,11 +85,11 @@ defmodule BotArmyAuditorRepoScanner.PulsePublisher do
   end
 
   defp publish_system_health(%{started_at: started_at}) do
-    tenant_id = System.get_env("BOT_ARMY_TENANT_ID") || BotArmyRuntime.Tenant.default_tenant_id()
+    tenant_id = System.get_env("BOT_ARMY_TENANT_ID") || BotArmyLibraryRuntime.Tenant.default_tenant_id()
     signal = health_signal()
     uptime_seconds = DateTime.diff(DateTime.utc_now() |> DateTime.truncate(:second), started_at, :second)
 
-    case BotArmyRuntime.SynapseHealth.publish(
+    case BotArmyLibraryRuntime.SynapseHealth.publish(
            source_node: node() |> Atom.to_string(),
            triggered_by: @envelope_source,
            service: @service_name,

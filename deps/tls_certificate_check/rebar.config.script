@@ -1,0 +1,101 @@
+% -*- mode: erlang; -*- vim: set ft=erlang:
+
+case erlang:function_exported(rebar3, main, 1)
+     orelse erlang:function_exported('Elixir.Mix', module_info, 1)
+     orelse {deps, lists:keyfind(deps, 1, CONFIG)}
+of
+    true ->
+        % either rebar3 or mix
+        begin
+            TakeOutProjPlugin
+                = fun (Name, Config) ->
+                    {project_plugins, ProjPlugins}
+                        = lists:keyfind(project_plugins, 1, Config),
+                    {value, {_, Version}, RemainingProjPlugins}
+                        = lists:keytake(Name, 1, ProjPlugins),
+                    % logger:notice("Dropping proj plugin '~ts' ~ts", [Name, Version]),
+                    _UpdatedConfig
+                        = lists:keystore(project_plugins, 1, Config,
+                                         {project_plugins, RemainingProjPlugins})
+                  end,
+
+            TakeOutElvis
+                = fun (Config) ->
+                    TakeOutProjPlugin(rebar3_lint, Config)
+                  end,
+
+            TakeOutErlFmt
+                = fun (Config) ->
+                    TakeOutProjPlugin(erlfmt, Config)
+                  end,
+
+            TakeOutHank
+                = fun (Config) ->
+                    TakeOutProjPlugin(rebar3_hank, Config)
+                  end,
+
+            OtpRelease = erlang:system_info(otp_release),
+
+            try list_to_integer(OtpRelease) of
+                IntRelease when IntRelease =< 25 ->
+                    % Take dev helpers away as they're no longer compatible with OTP 25
+                    TakeOutHank(TakeOutErlFmt(TakeOutElvis(CONFIG)));
+                %
+                IntRelease when IntRelease =< 26 ->
+                    % -doc tags wreak havok
+                    TakeOutErlFmt(CONFIG);
+                %
+                _ ->
+                    CONFIG
+            catch
+                error:badarg ->
+                    logger:warning("Don't now how to compare to OTP release: ~tp", [OtpRelease]),
+                    CONFIG
+            end
+        end;
+    %
+    %
+    %
+    {deps, false} ->
+        % no override needed
+        CONFIG;
+    %
+    %
+    %
+    {deps, {_, Deps}} ->
+        %
+        % rebar 2.x - convert deps to old format
+        % THIS MAY STOP WORKING AT ANY MOMENT.
+        % USE AT YOUR OWN RISK.
+        %
+        error_logger:warning_msg("~n~n"
+                                 "\t!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!~n"
+                                 "\t!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!~n"
+                                 "\t*********************************************************************~n"
+                                 "\t~n"
+                                 "\t[tls_certificate_check] You're **strongly** incentivized to use `rebar3`.~n"
+                                 "\tCompatibility with rebar 2 is unmaintained and will be removed in the near future.~n"
+                                 "\t~n"
+                                 "\t*********************************************************************~n"
+                                 "\t!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!~n"
+                                 "\t!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!~n"),
+
+        {_, ErlOpts} = lists:keyfind(erl_opts, 1, CONFIG),
+        OverriddenErlOpts = ErlOpts -- [warn_missing_spec],
+        OverriddenSortableDeps =
+            lists:foldr(
+              fun ({ssl_verify_fun, Version}, Acc) ->
+                      [{3, {ssl_verify_fun, ".*", {git, "https://github.com/deadtrickster/ssl_verify_fun.erl.git",
+                                                   {tag, Version}}}}
+                       | Acc];
+                  ({Name, Version}, _Acc) ->
+                      MsgErrorIo = io_lib:format("Hex package '~ts', version \"~ts\": missing Git repo",
+                                                 [Name, Version]),
+                      error(MsgErrorIo)
+              end,
+              [], Deps),
+
+        OverriddenDeps = [element(2, Pair) || Pair <- lists:keysort(1, OverriddenSortableDeps)],
+        Config2 = lists:keystore(deps, 1, CONFIG, {deps,OverriddenDeps}),
+        lists:keystore(erl_opts, 1, Config2, {erl_opts,OverriddenErlOpts})
+end.

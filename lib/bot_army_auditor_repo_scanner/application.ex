@@ -16,7 +16,7 @@ defmodule BotArmyAuditorRepoScanner.Application do
 
   @impl true
   def start(_type, _args) do
-    # Note: BotArmyRuntime.Telemetry and BotArmyRuntime.NATS.Connection are started
+    # Note: BotArmyLibraryRuntime.Telemetry and BotArmyLibraryRuntime.NATS.Connection are started
     # by bot_army_runtime automatically — do not add them here.
 
     children =

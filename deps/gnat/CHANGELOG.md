@@ -1,0 +1,157 @@
+# Changelog
+
+## 1.16
+
+* Add support for the `name` connection setting, which is reported to NATS
+  monitoring endpoints. Contributed by @ahamez in #227
+* Require Elixir 1.16+. Elixir 1.14 and 1.15 are no longer supported (both are
+  past their upstream maintenance window). The CI matrix now runs on Elixir
+  1.16 through 1.19 and Erlang/OTP 26 through 28.
+
+## 1.15
+
+* `PullConsumer` now requests an `idle_heartbeat` (defaults to half of
+  `:request_expires`, i.e. 2.5s) from the server on every long-poll pull
+  request and runs a local watchdog. If no traffic (data, status, or `100`
+  heartbeat) is observed within `2 * idle_heartbeat`, the consumer assumes
+  its pull request was lost (e.g. dropped during a JetStream leadership
+  change without killing the TCP connection) and forces a reconnect.
+  Configurable via the `:idle_heartbeat` and `:heartbeat_check_interval`
+  options.
+* `PullConsumer` emits a new telemetry event
+  `[:gnat, :jetstream, :pull_consumer, :heartbeat_expired]` when the watchdog
+  fires. Measurements: `%{gap_ms, threshold_ms}`. Metadata:
+  `%{module, stream_name, consumer_name, connection_name}`.
+* Improve parsing performance for large messages. Contributed by @cbecker in #225
+* Remove the `cowlib` dependency, which carried an unfixed CVE flagged by
+  `mix hex.audit`. Header encoding/decoding is now handled internally with no
+  change in behavior. Contributed by @tank-bohr in #226
+
+## 1.14
+
+* Add `PullConsumer.handle_connected/2` optional callback to get consumer info
+* Add `PullConsumer.handle_status/2` optional callback to observe status messages
+* Added support for `batch_size` option in PullConsumer options to pull messages
+  and acknowledge them in batches.
+* Add `Gnat.Jetstream.API.KV.Entry` with `from_message/2` for parsing a raw
+  NATS message from a KV bucket's underlying stream into a structured entry
+  (operation, key, value, revision, created, delta). Intended to be shared
+  between the built-in `KV.Watcher` and user-supplied `PullConsumer`
+  implementations (e.g. caches that need to detect when they are caught up
+  with the stream). Returns `:ignore` for messages that are not KV records.
+* `KV.Watcher` now uses `KV.Entry` internally; its public callback API is
+  unchanged. The push consumer it creates now enables server-driven flow
+  control and a 5s idle heartbeat (matching nats.go's ordered-consumer
+  defaults), so slow handlers apply backpressure instead of being dropped
+  as slow consumers.
+* **Behavior change (bugfix):** `PullConsumer` no longer forwards JetStream
+  informational status messages (e.g. `100` idle heartbeat, `409` leadership
+  change) to `c:handle_message/2`. These are not stream records and cannot
+  be acked. In single-message mode the consumer now drops them and re-issues
+  a pull request.
+* Add an optional `c:handle_status/2` callback to `Gnat.Jetstream.PullConsumer`
+  for users who want to observe status messages (e.g. log on `409`).
+
+## 1.11
+
+* Allow clients to force authentication without server auth_required by @mmmries in #205
+* Support ephemeral consumers and auto-cleanup consumers in the PullConsumer module by @mmmries in #202
+* Implement regularly scheduled PING/PONG health check by @mmmries in #200
+* Add Erlang 28 with Elixir 1.18 to the build matrix by @davydog187 in #201
+* Use Pager module for KV.contents by @mmmries in #198
+* Hint `:timeout` option in KV's typespec by @rixmann in #193
+
+## 1.10
+
+* Clarify authentication setup during test by @davydog187 in #187
+* Test on Elixir 1.18 and NATS 2.10.24 by @davydog187 in #188
+* Gnat.Jetstream.API.KV.info/3 by @davydog187 in #189
+* Remove function_exported? check for Keyword.validate!/2 by @davydog187 in #186
+* Tiny optimization to KV.list_buckets/1 by @davydog187 in #185
+* make KV-watcher emit :key_added events when the message has a header by @rixmann in #191
+* add :compression to stream attributes by @rixmann in #192
+* fix: unknown field domain in Stream.create (#194) by @c0deaddict
+* feat: add jetstream message metadata helper (#197) by @c0deaddict
+* fix: deliver policy (#196) by @c0deaddict
+
+## 1.9
+
+* Housecleaning by @mmmries in #176
+  * switch to charlist sigils
+  * update to newest nkeys
+  * require elixir 1.14 and erlang 25+
+* Fix incorrect useage of charlist by @davydog187 in #179
+* Soft deprecate is_kv_bucket_stream?/1 in favor of kv_bucket_stream?/1 by @davydog187 in #183
+* Clean up examples in KV by @davydog187 in #181
+* Document options for Gnat.Jetstream.API.KV by @davydog187 in #180
+
+## 1.8
+
+* Integrated the jetstream functionality into this client directly https://github.com/nats-io/nats.ex/pull/146
+* Add ability to list KV buckets https://github.com/nats-io/nats.ex/pull/152
+* Improve CI Reliability https://github.com/nats-io/nats.ex/pull/154
+* Bugfix to treat no streams as an empty list rather than a null https://github.com/nats-io/nats.ex/pull/155
+* Added supported for `allow_direct` and `mirror_direct` attributes of streams https://github.com/nats-io/nats.ex/pull/161
+* Added support for `discard_new_per_subject` attribute of streams https://github.com/nats-io/nats.ex/pull/163
+* Added support for `Object.list_buckets` https://github.com/nats-io/nats.ex/pull/169
+
+## 1.7
+
+ * Added support for the NATS [services API](https://github.com/nats-io/nats.go/blob/main/micro/README.md), letting developers participate in service discovery and stats https://github.com/nats-io/nats.ex/pull/141
+ * A bugfix to remove the queue_group from a service config and some optimization for the services API https://github.com/nats-io/nats.ex/pull/145
+
+## 1.6
+
+* added the `no_responders` behavior https://github.com/nats-io/nats.ex/pull/137
+
+## 1.5
+
+* add the `inbox_prefix` option https://github.com/nats-io/nats.ex/pull/121
+* add the `Gnat.server_info/1` function https://github.com/nats-io/nats.ex/pull/124
+* fix header parsing issue https://github.com/nats-io/nats.ex/pull/125
+
+## 1.4
+
+* add the `Gnat.request_multi/4` function https://github.com/nats-io/nats.ex/pull/120
+* add elixir 1.13 to the test matrix
+
+## 1.3
+
+* adding support for sending and receiving headers https://github.com/nats-io/nats.ex/pull/116
+
+## 1.2
+
+* `Gnat.Server` behaviour with support in the `ConsumerSupervisor` https://github.com/nats-io/nats.ex/compare/1b1adc85e4b28231218ef87c7fc3445fce854377...b24a7e14325b51fbb93fde7e3d891d18b4fa8afb
+* avoid logging sensitive credentials https://github.com/nats-io/nats.ex/pull/105
+* deprecate Gnat.ping, improved typespecs https://github.com/nats-io/nats.ex/pull/103 
+* relax the version constraint on nimble_parsec https://github.com/nats-io/nats.ex/issues/112
+
+## 1.1
+
+* add support for nkeys and NGS https://github.com/nats-io/nats.ex/pull/101
+* Fix supervisor ConsumerSuperivsor crash https://github.com/nats-io/nats.ex/pull/96
+
+## 1.0
+
+* Make supervisors officially supported https://github.com/nats-io/nats.ex/pull/96
+
+## 0.7.0
+
+* update to telemetry 0.4 https://github.com/nats-io/nats.ex/pull/86 and https://github.com/nats-io/nats.ex/pull/87
+* support for token authentication https://github.com/nats-io/nats.ex/pull/92
+* support elixir 1.9 https://github.com/nats-io/nats.ex/pull/93
+
+## 0.6.0
+
+* Dropped support for Erlang < 19 and Elixir <= 1.5
+* Added Telemetry to the project (thanks @rubysolo)
+* Switched to nimble_parsec for parsing
+  * Updated benchmarking/performance information. We can now do 170k requests per second on a 16-core server.
+* Fixed a bug around re-subscribing for the `ConsumerSupervisor`
+* Pass `sid` when delivering message (thanks @entone)
+* Documentation fixes from @deini and @johannestroeger
+
+## 0.5.0
+
+* Dropped support for Elixir 1.4 and OTP 18 releases. You will need to use Elixir 1.5+ and OTP 19+.
+* Switched to running our tests against gnatsd `1.3.0`
