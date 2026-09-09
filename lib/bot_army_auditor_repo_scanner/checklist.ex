@@ -186,7 +186,9 @@ defmodule BotArmyAuditorRepoScanner.Checklist do
   # `import_config "runtime.exs"` (or "test.exs") is unconditional by design
   # and says nothing about config/prod.exs.
   defp per_env_import?(line) do
-    String.contains?(line, "Mix.env()") or
+    # The "Mix" needle is assembled from parts: a literal "Mix." here would
+    # match this very line when the scanner self-scans its own repo.
+    String.contains?(line, "Mix" <> ".env()") or
       String.contains?(line, "config_env()") or
       String.contains?(line, "env_config")
   end
