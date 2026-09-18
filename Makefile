@@ -1,5 +1,15 @@
 SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
-MIX ?= /Users/abby/.local/share/mise/shims/mix
+# Toolchain locations are machine-specific, so they are resolved per machine by
+# the versioned resolver in the shared scripts dir (scripts/bot-helpers/portable.mk).
+SCRIPTS_DIRECTORY ?= $(abspath $(CURDIR)/../scripts)
+PORTABLE_MK := $(SCRIPTS_DIRECTORY)/portable.mk
+ifneq ($(wildcard $(PORTABLE_MK)),)
+include $(PORTABLE_MK)
+else ifeq ($(strip $(MIX)),)
+$(error mix: no portable resolver at $(PORTABLE_MK) and no MIX set — run `make install-helpers` in the elixir_bots monorepo, or pass MIX=/path/to/mix)
+else
+$(warning no portable resolver at $(PORTABLE_MK) — using MIX=$(MIX) as-is; run `make install-helpers` for portable resolution)
+endif
 
 .PHONY: setup help deps test credo dialyzer coverage check format clean release publish-release setup-hooks setup-db reset-db logs push-and-publish
 
