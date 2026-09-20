@@ -183,16 +183,16 @@ _FIND_MONOREPO_ROOT = \
 		echo "$(MONOREPO_ROOT)"; \
 		exit 0; \
 	fi; \
-	if [ -d "../../../elixir_bots" ] && [ -f "../../../elixir_bots/Makefile" ]; then \
-		if grep -q "verify-bot-nats:" "../../../elixir_bots/Makefile"; then \
-			echo "$$(cd ../../../elixir_bots && pwd)"; \
+	for CAND in ../../elixir_bots ../../../elixir_bots ../../../../elixir_bots; do \
+		if [ -d "$$CAND/bot_army_infra" ] && grep -q "verify-bot-nats:" "$$CAND/Makefile" "$$CAND/make/deploy.mk" 2>/dev/null; then \
+			echo "$$(cd "$$CAND" && pwd)"; \
 			exit 0; \
 		fi; \
-	fi; \
+	done; \
 	CURRENT_DIR=$$(pwd); \
 	while [ "$$CURRENT_DIR" != "/" ]; do \
-		if [ -f "$$CURRENT_DIR/Makefile" ] && grep -q "verify-bot-nats:" "$$CURRENT_DIR/Makefile"; then \
-			if [ -d "$$CURRENT_DIR/bots" ] || [ -d "$$CURRENT_DIR/bot_army_infra" ]; then \
+		if [ -d "$$CURRENT_DIR/bots" ] || [ -d "$$CURRENT_DIR/bot_army_infra" ]; then \
+			if grep -q "verify-bot-nats:" "$$CURRENT_DIR/Makefile" "$$CURRENT_DIR/make/deploy.mk" 2>/dev/null; then \
 				echo "$$CURRENT_DIR"; \
 				exit 0; \
 			fi; \
