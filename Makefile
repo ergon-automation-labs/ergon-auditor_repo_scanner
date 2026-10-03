@@ -155,7 +155,7 @@ publish-release: release
 	echo "Publishing deploy.release.requested to NATS..."; \
 	BOT_SHORT=$$(echo "repo_scanner_bot" | sed 's/_bot$$//'); \
 	REPO_SLUG=$$(git config --get remote.origin.url | sed -E 's#.*[:/]([^/]+/[^/]+)\.git#\1#'); \
-	MONOREPO_ROOT=$$($(call _FIND_MONOREPO_ROOT)); \
+	MONOREPO_ROOT=$$($(call _FIND_MONOREPO_ROOT)) || true; \
 	NATS_PUBLISH_SCRIPT="$$MONOREPO_ROOT/bot_army_infra/salt/common/files/nats_publish.sh"; \
 	if [ -n "$$MONOREPO_ROOT" ] && [ -f "$$NATS_PUBLISH_SCRIPT" ]; then \
 		PAYLOAD=$$(printf '{"bot":"%s","repo":"%s","tag":"v%s","version":"%s"}' "$$BOT_SHORT" "$$REPO_SLUG" "$$VERSION" "$$VERSION"); \
